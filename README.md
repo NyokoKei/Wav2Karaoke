@@ -19,7 +19,7 @@ Run the following command:
 
 For help:
 ```bash
-./wav2karaoke --help # OR ./wav2karaoke --h
+./wav2karaoke --help # OR ./wav2karaoke -h
 ```
 
 #### Demo:
