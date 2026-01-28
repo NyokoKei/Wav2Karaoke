@@ -24,6 +24,6 @@ For help:
 
 #### Demo:
 ```bash
-./wav2karaoke -i WTCryF1J54Y -o ./demo -t ./demo/lyrics.txt  
+./wav2karaoke --youtube WTCryF1J54Y --output ./demo --text ./demo/lyrics.txt  
 ```
 where `WTCryF1J54Y` is YouTube ID for "Auld Lang Syne" song.
