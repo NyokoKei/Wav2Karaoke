@@ -5,7 +5,7 @@
 Clone this repository to your local machine:
 
 ```bash
-git clone git@github.com:NyokoKei/Wav2Karaoke.git
+git clone https://github.com/NyokoKei/Wav2Karaoke.git
 cd Wav2Karaoke
 ```
 
