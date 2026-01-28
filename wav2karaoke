@@ -1,0 +1,107 @@
+#!/bin/bash
+
+# ===================================================================
+# shell for karaoke style aligment
+# ./wav2karaoke --youtube [url or id] --text [lyrics.txt] [--output [output dir]] [-s [result.csv]]
+# ===================================================================
+set -e
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+VENV="$ROOT/.venv"
+REQ="$ROOT/requirements.txt"
+
+if [[ ! -d "$VENV" ]]; then
+  echo "Creating common venv"
+  python -m venv "$VENV"
+  "$VENV/bin/python" -m pip install --upgrade pip
+  "$VENV/bin/python" -m pip install -r "$REQ"
+fi
+
+YOUTUBE=""
+OUTPUT_DIR="$ROOT/output"
+LYRICS=""
+SYL="$OUTPUT_DIR/result.csv"
+SYL_SET=FALSE
+
+helpFunction() {
+  echo "Usage:"
+  echo "  $0 -i <youtube_id_or_url> [-o <output_dir>] (-t <lyrics_transcription.txt> [-s <karaoke_alignment.csv>]"
+  echo "Options:"
+  echo "  -i, --youtube   YouTube video ID or URL"
+  echo "  -o, --output  Output directory (default: ./output)"
+  echo "  -t, --text   Song lyrics in .txt format"
+  echo "  -s, --syllables  Result output file path (default: ./output/result.csv)"
+  echo "Examples:"
+  echo "  $0 --youtube WTCryF1J54Y -o ./result -t ./lyrics.txt --syllables ./result/result.csv"
+  exit 1
+}
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -i|--youtube)
+      YOUTUBE="$2"
+      shift 2
+      ;;
+    -o|--output)
+      OUTPUT_DIR="$2"
+      shift 2
+      ;;
+    -t|--text)
+      LYRICS="$2"
+      shift 2
+      ;;
+    -s|--syllables)
+      SYL="$2"
+      SYL_SET=true
+      shift 2
+      ;;
+    -h|--help)
+      helpFunction
+      ;;
+    (*)
+      echo "Unknown option: $1"
+      helpFunction
+      ;;
+  esac
+done
+
+if [[ -n "$OUTPUT_DIR" && "$SYL_SET" = FALSE ]]; then
+  SYL="$OUTPUT_DIR/result.csv"
+fi
+echo "$SYL"
+#=========================================AUDIO PROCESSING================================================
+"$VENV/bin/python" "$ROOT/src/audio_processing.py" --youtube "$YOUTUBE" --output "$OUTPUT_DIR"
+VOCAL="$OUTPUT_DIR/vocals.wav"
+FREQ="$OUTPUT_DIR/vocals.f0.csv"
+#=========================================FINISHED AUDIO PROCESSING================================================
+CONDA_ENV="mfa_alignment"
+PYTHON_VERSION="3.10"
+command -v conda >/dev/null || { echo "conda not found"; exit 1; }
+if ! conda env list | awk '{print $1}' | grep -qx "$CONDA_ENV"; then
+  echo "$CONDA_ENV "
+  conda create -n "$CONDA_ENV" python="$PYTHON_VERSION" -y
+fi
+
+if ! conda run -n "$CONDA_ENV" mfa --version >/dev/null 2>&1; then
+  echo "=======Installing Montreal Forced Aligner======="
+  conda install -n "$CONDA_ENV" -c conda-forge montreal-forced-aligner -y
+fi
+
+echo "=======Installing MFA models======="
+conda run -n "$CONDA_ENV" mfa model download acoustic english_us_arpa
+conda run -n "$CONDA_ENV" mfa model download dictionary english_us_arpa
+#=========================================LYRICS PROCESSING================================================
+if [[ -z "$VOCAL" || -z "$LYRICS" ]]; then
+  echo "Error: Not enough arguments!"
+  helpFunction
+fi
+
+conda run -n "$CONDA_ENV" python "$ROOT/src/lyrics_processing.py" --vocal "$VOCAL" --text "$LYRICS"
+GRID="$OUTPUT_DIR/vocals.TextGrid"
+#=========================================FINISHED LYRICS PROCESSING================================================
+#=========================================KARAOKE-STYLE ALIGNMENT================================================
+if [[ -z "$FREQ" || -z "$SYL" || -z "$GRID" ]]; then
+  echo "Error: Not enough arguments!"
+  helpFunction
+fi
+"$VENV/bin/python" "$ROOT/src/karaoke_alignment.py" -f "$FREQ" -s "$SYL" -g "$GRID"
+#=========================================FINISHED KARAOKE-STYLE ALIGNMENT================================================
