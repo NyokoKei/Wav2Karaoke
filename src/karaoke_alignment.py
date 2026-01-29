@@ -158,7 +158,7 @@ def split_more_phon_than_ortho(word: str, count: int):
 #=====================================================Alighnment=====================================================
 def pitch_to_midi(p: str):
     """
-    Docstring for pitch_to_midi
+    Transforms pitch note into a MIDI representation
     
     :param p: pitch
     :type p: str
